@@ -10,6 +10,6 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-1"  # Замініть на ваш регіон
+  region = "us-west-1"  # Ваш регіон
 }
 
