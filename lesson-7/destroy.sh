@@ -12,10 +12,11 @@ echo ""
 export TFENV_ARCH=amd64
 export GODEBUG=asyncpreemptoff=1
 
-# 1. Закоментувати модуль s3_backend в main.tf
+# 1. Закоментувати модуль s3_backend в main.tf та outputs.tf
 echo "📝 Крок 1: Закоментування модуля s3_backend..."
 sed -i.bak '/^module "s3_backend"/,/^}/s/^/# /' main.tf
-echo "✅ Модуль s3_backend закоментовано"
+sed -i.bak '/^output "s3_bucket_name"/,/^}/s/^/# /; /^output "dynamodb_table_name"/,/^}/s/^/# /' outputs.tf
+echo "✅ Модуль s3_backend і його outputs закоментовано"
 echo ""
 
 # 2. Видалити backend.tf (зробити backup)
@@ -46,24 +47,55 @@ if [ "$confirm" != "yes" ]; then
     echo "❌ Destroy скасовано"
     # Повернути зміни
     mv main.tf.bak main.tf 2>/dev/null || true
+    mv outputs.tf.bak outputs.tf 2>/dev/null || true
     mv backend.tf.disabled backend.tf 2>/dev/null || true
     exit 1
 fi
+
+echo ""
+echo "🔥 Починаємо видалення ресурсів..."
+echo ""
 
 terraform destroy
 
 echo ""
 echo "=== ✅ Destroy завершено! ==="
 echo ""
+
+# 5. Повернути все назад для наступного запуску
+echo "📝 Крок 5: Відновлення конфігурації..."
+
+# Розкоментувати s3_backend в main.tf
+if [ -f main.tf.bak ]; then
+    sed -i '' '/^# module "s3_backend"/,/^# }/s/^# //' main.tf
+    echo "✅ Модуль s3_backend розкоментовано"
+fi
+
+# Розкоментувати outputs
+if [ -f outputs.tf.bak ]; then
+    sed -i '' '/^# output "s3_bucket_name"/,/^# }/s/^# //; /^# output "dynamodb_table_name"/,/^# }/s/^# //' outputs.tf
+    echo "✅ Outputs розкоментовано"
+fi
+
+# Повернути backend.tf
+if [ -f backend.tf.disabled ]; then
+    mv backend.tf.disabled backend.tf
+    echo "✅ backend.tf відновлено"
+fi
+
+# Видалити backup файли
+rm -f main.tf.bak outputs.tf.bak
+
+echo ""
 echo "📋 Що було зроблено:"
 echo "  ✓ Видалено: EKS кластер, VPC, ECR repository"
 echo "  ✓ Залишено: S3 bucket, DynamoDB таблиця"
+echo "  ✓ Конфігурація відновлена для наступного запуску"
 echo ""
-echo "📋 Для наступного запуску:"
-echo "  1. terraform init"
-echo "  2. terraform apply"
+echo "📋 Для наступного запуску просто виконай:"
+echo "  terraform init && terraform apply"
 echo ""
-echo "💡 Скрипт створив backup файли (.bak), можеш їх видалити:"
-echo "   rm main.tf.bak"
+echo "  Або використай скрипт:"
+echo "  ./init-and-apply.sh"
 echo ""
 

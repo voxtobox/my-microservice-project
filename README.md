@@ -1,34 +1,103 @@
-# Мій власний мікросервісний проєкт  
+# DevOps Microservice Project
 
-Це репозиторій для навчального проєкту в межах курсу "DevOps CI/CD".
+## Lesson 7: Kubernetes з Helm
 
-## Опис структури проєкту
+### Опис проекту
 
-- `lesson-5/` — приклади Terraform для інфраструктури уроку 5
-  - `main.tf` — підключення модулів та їх параметри
-  - `backend.tf` — конфігурація бекенду Terraform (`s3` + `dynamodb`)
-  - `terraform.tf` — версії Terraform та провайдерів, `provider "aws"`
-  - `outputs.tf` — зовнішні вихідні значення проєкту
-  - `modules/` — каталоги з користувацькими модулями
-    - `s3-backend/` — модуль для S3 бакета стейту та DynamoDB таблиці локів
-    - `vpc/` — модуль для мережевої інфраструктури VPC (CIDR, підмережі, маршрути)
-    - `ecr/` — модуль для реєстру контейнерів AWS ECR
+Проект створює інфраструктуру AWS з кластером Kubernetes (EKS), ECR репозиторієм для Docker-образів та розгортає Django-застосунок за допомогою Helm.
 
-## Команди для ініціалізації та запуску
+### Структура проекту
 
-Виконуйте команди з каталогу `lesson-5/`:
-
-```bash
-terraform init
-terraform plan
-terraform apply
-terraform destroy
+```
+lesson-7/
+├── main.tf
+├── backend.tf
+├── terraform.tf
+├── outputs.tf
+├── modules/
+│   ├── vpc/
+│   ├── ecr/
+│   ├── eks/
+│   └── s3-backend/
+└── django-chart/
+    ├── Chart.yaml
+    ├── values.yaml
+    └── templates/
+        ├── deployment.yaml
+        ├── service.yaml
+        ├── configmap.yaml
+        └── hpa.yaml
 ```
 
-Примітка: якщо використовується бекенд `s3` з блокуванням у `dynamodb`, переконайтеся, що S3 бакет і таблиця існують у вказаному регіоні.
+### Компоненти
 
-## Пояснення модулів
+1. **VPC** - мережа з публічними підмережами
+2. **ECR** - репозиторій для Docker-образів
+3. **EKS** - Kubernetes кластер
+4. **Helm Chart**:
+   - Deployment з Django (2-6 реплік)
+   - Service типу LoadBalancer
+   - ConfigMap зі змінними середовища
+   - HPA (автомасштабування при CPU > 70%)
 
-- s3-backend: створює S3 бакет для зберігання стейту Terraform і DynamoDB таблицю для блокувань (lock). Забезпечує надійну роботу в команді та історію змін.
-- vpc: описує базову мережеву інфраструктуру (VPC, публічні/приватні підмережі, інтернет-шлюз, таблиці маршрутів), щоб ізолювати й сегментувати ресурси.
-- ecr: створює репозиторії в AWS ECR для зберігання контейнерних образів застосунків, із політиками видимості та життєвого циклу (за потреби).
+### Кроки розгортання
+
+#### 1. Розгортання інфраструктури
+
+```bash
+cd lesson-7
+terraform init
+terraform apply
+```
+
+#### 2. Налаштування kubectl
+
+```bash
+aws eks update-kubeconfig --name eks-cluster-demo --region us-west-1
+```
+
+#### 3. Завантаження Docker-образу до ECR
+
+```bash
+ECR_URL=$(terraform output -raw ecr_repository_url)
+aws ecr get-login-password --region us-west-1 | docker login --username AWS --password-stdin $ECR_URL
+docker tag your-django-image:latest $ECR_URL:latest
+docker push $ECR_URL:latest
+```
+
+#### 4. Оновлення values.yaml
+
+Замініть `ACCOUNT_ID` в `django-chart/values.yaml` на ваш AWS Account ID:
+
+```bash
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+sed -i "s/ACCOUNT_ID/$ACCOUNT_ID/g" django-chart/values.yaml
+```
+
+#### 5. Встановлення Helm chart
+
+```bash
+helm install django-app ./django-chart
+```
+
+#### 6. Перевірка
+
+```bash
+kubectl get pods
+kubectl get svc
+kubectl get hpa
+```
+
+### Параметри
+
+- **Replicas**: мін 2, макс 6
+- **CPU threshold**: 70%
+- **Service type**: LoadBalancer
+- **Instance type**: t4g.small (ARM)
+
+### Очищення
+
+```bash
+helm uninstall django-app
+terraform destroy
+```

@@ -12,11 +12,12 @@ export TFENV_ARCH=amd64
 export GODEBUG=asyncpreemptoff=1
 
 # 1. Розкоментувати s3_backend якщо він закоментований
-echo "📝 Крок 1: Перевірка main.tf..."
+echo "📝 Крок 1: Перевірка main.tf та outputs.tf..."
 if grep -q "^# module \"s3_backend\"" main.tf; then
     echo "Розкоментування модуля s3_backend..."
     sed -i.bak '/^# module "s3_backend"/,/^# }/s/^# //' main.tf
-    echo "✅ Модуль s3_backend розкоментовано"
+    sed -i.bak '/^# output "s3_bucket_name"/,/^# }/s/^# //; /^# output "dynamodb_table_name"/,/^# }/s/^# //' outputs.tf
+    echo "✅ Модуль s3_backend і його outputs розкоментовано"
 else
     echo "✅ Модуль s3_backend вже активний"
 fi
@@ -35,7 +36,7 @@ else
 terraform {
   backend "s3" {
     bucket         = "terraform-state-bucket-vao-01"
-    key            = "lesson-5/terraform.tfstate"
+    key            = "lesson-7/terraform.tfstate"
     region         = "us-west-1"
     dynamodb_table = "terraform-locks"
     encrypt        = true
