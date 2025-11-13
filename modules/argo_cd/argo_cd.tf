@@ -1,0 +1,30 @@
+resource "helm_release" "argo_cd" {
+  name             = var.name
+  namespace        = var.namespace
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  version          = var.chart_version
+  create_namespace = true
+
+  values = [
+    file("${path.module}/values.yaml")
+  ]
+}
+
+resource "helm_release" "argo_apps" {
+  name             = "${var.name}-apps"
+  chart            = "${path.module}/charts"
+  namespace        = var.namespace
+  create_namespace = false
+
+  values = [
+    templatefile("${path.module}/charts/values.yaml.tpl", {
+      app_repo_url      = var.app_repo_url
+      app_repo_username = var.app_repo_username
+      app_repo_password = var.app_repo_password
+    })
+  ]
+
+  depends_on = [helm_release.argo_cd]
+}
+

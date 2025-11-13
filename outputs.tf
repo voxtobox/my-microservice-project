@@ -1,13 +1,3 @@
-output "s3_bucket_name" {
-  description = "Назва S3-бакета для стейтів"
-  value       = module.s3_backend.s3_bucket_name
-}
-
-output "dynamodb_table_name" {
-  description = "Назва таблиці DynamoDB для блокування стейтів"
-  value       = module.s3_backend.dynamodb_table_name
-}
-
 output "vpc_id" {
   value = module.vpc.vpc_id
 }
@@ -31,4 +21,24 @@ output "eks_cluster_name" {
 output "eks_node_role_arn" {
   description = "IAM role ARN for EKS Worker Nodes"
   value       = module.eks.eks_node_role_arn
+}
+
+output "jenkins_release_name" {
+  description = "Helm release name for Jenkins"
+  value       = module.jenkins.jenkins_release_name
+}
+
+output "jenkins_namespace" {
+  description = "Namespace where Jenkins is installed"
+  value       = module.jenkins.jenkins_namespace
+}
+
+output "argo_cd_server_service" {
+  description = "Argo CD server service DNS name"
+  value       = module.argo_cd.argo_cd_server_service
+}
+
+output "argo_cd_admin_password_hint" {
+  description = "Command to retrieve Argo CD initial admin password"
+  value       = module.argo_cd.admin_password_hint
 }
