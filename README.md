@@ -1,10 +1,10 @@
 # DevOps Microservice Project
 
-## Lesson 8-9: Jenkins + Argo CD + CI/CD
+## Lesson 10: Створення гнучкого Terraform-модуля для баз даних
 
 ### Опис проекту
 
-Проект створює повний CI/CD pipeline з використанням Jenkins, Helm, Terraform та Argo CD. Автоматично збирає Docker-образ для Django-застосунку, публікує його в Amazon ECR, оновлює Helm chart у репозиторії та синхронізує застосунок у кластері через Argo CD.
+Проект створює повну інфраструктуру для мікросервісного застосунку з використанням Terraform, включаючи CI/CD pipeline (Jenkins, Argo CD), Kubernetes кластер (EKS), репозиторій Docker-образів (ECR) та гнучкий модуль керованої бази даних (RDS/Aurora). Модуль RDS підтримує як звичайну RDS інстанцію (PostgreSQL/MySQL), так і Aurora кластер, з можливістю перемикання через прапорець `use_aurora`.
 
 ### Структура проекту
 
@@ -54,9 +54,10 @@
 1. **VPC** - мережа з публічними підмережами
 2. **ECR** - репозиторій для Docker-образів
 3. **EKS** - Kubernetes кластер з EBS CSI Driver
-4. **Jenkins** - CI/CD сервер з Kaniko для збірки образів
-5. **Argo CD** - GitOps інструмент для автоматичної синхронізації
-6. **Helm Chart**:
+4. **RDS** - керована база даних PostgreSQL/MySQL
+5. **Jenkins** - CI/CD сервер з Kaniko для збірки образів
+6. **Argo CD** - GitOps інструмент для автоматичної синхронізації
+7. **Helm Chart**:
    - Deployment з Django (2-6 реплік)
    - Service типу LoadBalancer
    - ConfigMap зі змінними середовища
@@ -199,6 +200,50 @@ kubectl get hpa -n default
 - **CPU threshold**: 70%
 - **Service type**: LoadBalancer
 - **Instance type**: t4g.small (ARM)
+
+### RDS Module
+
+Модуль для створення керованої бази даних в AWS (RDS або Aurora).
+
+#### Основні змінні:
+
+- `use_aurora` - перемикач між RDS та Aurora (default: `false`)
+- `engine` - тип БД: `postgres` або `mysql`
+- `instance_class` - клас інстансу (наприклад, `db.t3.medium`)
+- `allocated_storage` - обсяг сховища в ГБ
+- `multi_az` - Multi-AZ deployment для відмовостійкості
+
+#### Приклад використання (PostgreSQL):
+
+```hcl
+module "rds" {
+  source = "./modules/rds"
+  
+  name       = "myapp-db"
+  use_aurora = false
+  
+  engine                     = "postgres"
+  engine_version             = "17.2"
+  parameter_group_family_rds = "postgres17"
+  
+  instance_class          = "db.t3.medium"
+  allocated_storage       = 20
+  db_name                 = "myapp"
+  username                = "postgres"
+  password                = "secure-password"
+  subnet_private_ids      = module.vpc.private_subnets
+  subnet_public_ids       = module.vpc.public_subnets
+  publicly_accessible     = false
+  vpc_id                  = module.vpc.vpc_id
+  multi_az                = true
+  backup_retention_period = 7
+  
+  parameters = {
+    max_connections            = "200"
+    log_min_duration_statement = "500"
+  }
+}
+```
 
 ### Очищення
 
