@@ -42,3 +42,23 @@ output "argo_cd_admin_password_hint" {
   description = "Command to retrieve Argo CD initial admin password"
   value       = module.argo_cd.admin_password_hint
 }
+
+output "rds_endpoint" {
+  description = "RDS endpoint"
+  value       = module.rds.rds_endpoint
+}
+
+output "aurora_cluster_endpoint" {
+  description = "Aurora cluster endpoint"
+  value       = module.rds.aurora_cluster_endpoint
+}
+
+output "aurora_reader_endpoint" {
+  description = "Aurora reader endpoint"
+  value       = module.rds.aurora_reader_endpoint
+}
+
+output "db_name" {
+  description = "Database name"
+  value       = module.rds.db_name
+}
